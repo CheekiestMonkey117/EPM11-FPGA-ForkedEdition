@@ -278,15 +278,15 @@ localparam WATCH_COUNT      = 4;
                 .s_valid            (i_cpu_valid),
                 .s_ready            (i_cpu_ready),
 
-                .dbg_data           (i_bus_dbg_data),
-                .dbg_beat           (i_bus_dbg_beat),
+                .dbg_data           (pad_cpu[15:0]),
+                .dbg_beat           (2'b00),
 
                 .cpu_clk_async      (pad_cpu[16]),
                 .cpu_wr_async       (pad_cpu[17]),
                 .watch_clear_async  (i_eio_out[0]),
 
-                .probe_bus          (probe_bus),
-                .probe_watch        (probe_watch)
+                .probe_bus          (i_probe_bus),
+                .probe_watch        (i_probe_watch)
             );
         end
     endgenerate
@@ -311,30 +311,7 @@ localparam WATCH_COUNT      = 4;
             // arm time. So the whole bus goes in
             // SAMPLE_W, channels stay 1...
 
-            // NOTE: user.sv's
-            // own probe
-            // ------------
-            //
-            // Set ELA_USER_PROBE to 1 to capture
-            // user.sv's 16-bit probe alongside the
-            // bus. That is the ONLY edit needed
-            // here - the sample width and the
-            // concatenation both follow from it.
-            //
-            // Then add a user_probe entry to
-            // prog/epm11_bus.prob so the host knows
-            // how to decode it - name user_probe,
-            // width 16, lsb 128 - and change
-            // sample_width there to 144.
-            //
-            // Costs no extra BSRAM, since 128 and
-            // 144 bits both need 8 blocks, but
-            // readback goes from 4 words per sample
-            // to 5...
-
-            localparam ELA_USER_PROBE   = CPU_BUS_TEST;
-
-            localparam ELA_SAMPLE_WIDTH = PROBE_BUS_W + (ELA_USER_PROBE * 16);
+            localparam ELA_SAMPLE_WIDTH = PROBE_BUS_W;
             localparam ELA_SAMPLE_DEPTH = 64;
             localparam ELA_CHANNELS     = 1;
 
@@ -358,11 +335,17 @@ localparam WATCH_COUNT      = 4;
             end
 
 
-            // NOTE: built at full width, then
-            // sliced. With ELA_USER_PROBE at 0 the
-            // slice drops the user probe and
-            // synthesis prunes it...
-            wire [PROBE_BUS_W+15:0] i_ela_sample = {i_user_probe, i_probe_bus};
+            reg [ELA_SAMPLE_WIDTH-1:0]                  i_ela_probe;
+
+            if(CPU_BUS_TEST) begin
+                always @(posedge i_sysclk) begin
+                    i_ela_probe <= i_probe_bus;
+                end
+                    // NOTE: one register, so the bus
+                    // pins meet timing into the ELA...
+            end else begin
+                assign i_ela_probe = i_probe_bus;
+            end
 
             // ----------------------------------------------
             //  Embedded Logic Analyser
@@ -408,7 +391,7 @@ localparam WATCH_COUNT      = 4;
 
                 .sample_clk     (i_sysclk),
                 .sample_rst     (i_sysclk_reset),
-                .probe_in       (i_ela_sample[ELA_SAMPLE_WIDTH-1:0]),
+                .probe_in       (i_ela_probe),
 
                 .eio_probe_in   (i_probe_watch),
                 .eio_probe_out  (i_eio_out),
