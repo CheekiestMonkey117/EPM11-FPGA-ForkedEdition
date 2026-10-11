@@ -311,14 +311,14 @@ localparam WATCH_COUNT      = 4;
             // arm time. So the whole bus goes in
             // SAMPLE_W, channels stay 1...
 
-            localparam ELA_SAMPLE_WIDTH = PROBE_BUS_W;
+            localparam ELA_SAMPLE_WIDTH = CPU_BUS_TEST ? PROBE_BUS_W : 8;
             localparam ELA_SAMPLE_DEPTH = 64;
-            localparam ELA_CHANNELS     = 1;
+            localparam ELA_CHANNELS     = CPU_BUS_TEST ? 1 : 6;
 
             reg                                         i_sysclk_reset;
 
             reg [1:0]                                   i_buttons;
-            reg [ELA_SAMPLE_WIDTH-1:0]                  i_counter;
+            reg [7:0]                                   i_counter;
 
             always @(posedge i_sysclk) begin
                 if (i_sysclk_resetn == 1'b0) begin
@@ -330,12 +330,7 @@ localparam WATCH_COUNT      = 4;
                 end
             end
 
-            if(!CPU_BUS_TEST) begin
-                assign i_probe = { 7'b0000000, i_buttons[1], i_counter, i_user_probe};
-            end
-
-
-            reg [ELA_SAMPLE_WIDTH-1:0]                  i_ela_probe;
+            reg [(ELA_SAMPLE_WIDTH*ELA_CHANNELS)-1:0]   i_ela_probe;
 
             if(CPU_BUS_TEST) begin
                 always @(posedge i_sysclk) begin
@@ -344,7 +339,7 @@ localparam WATCH_COUNT      = 4;
                     // NOTE: one register, so the bus
                     // pins meet timing into the ELA...
             end else begin
-                assign i_ela_probe = i_probe_bus;
+                assign i_ela_probe = { 16'h0000, 7'b0000000, i_buttons[1], i_counter, i_user_probe };
             end
 
             // ----------------------------------------------
