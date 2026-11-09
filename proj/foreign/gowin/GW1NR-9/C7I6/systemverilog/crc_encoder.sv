@@ -15,20 +15,13 @@ module crc_encoder #(
 );
 
     // ----------------------------------------------
-    //  Internal signals
-    // ----------------------------------------------
-
-    integer i_bit;
-
-
-    // ----------------------------------------------
     //  Implementation
     // ----------------------------------------------
 
-    always @(*) begin
+    always_comb begin
         crc = INIT;
 
-        for (i_bit = 15; i_bit >= 0; i_bit = i_bit - 1) begin
+        for (int i_bit = 15; i_bit >= 0; i_bit = i_bit - 1) begin
             if ((crc[15] ^ data[i_bit]) == 1'b1) begin
                 crc = {crc[14:0], 1'b0} ^ POLYNOMIAL;
             end else begin
