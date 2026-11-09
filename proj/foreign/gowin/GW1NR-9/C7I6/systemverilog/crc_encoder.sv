@@ -1,0 +1,1 @@
+// module for encoding a 16 bit values 16 bit CRC
